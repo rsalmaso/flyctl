@@ -70,7 +70,7 @@ jobs:
       max-parallel: 4
       matrix:
         os:
-          - ubuntu-latest
+          - depot-ubuntu-22.04
           - ubuntu-20.04
           - macos-latest
           - macos-11

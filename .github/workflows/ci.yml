@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest-m, macos-latest-xl, windows-latest-l ]
+        os: [ depot-ubuntu-22.04, macos-latest-xl, windows-latest-l ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

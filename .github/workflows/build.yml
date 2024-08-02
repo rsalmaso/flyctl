@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   test_build:
-    runs-on: ubuntu-latest-m
+    runs-on: depot-ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
         with:
