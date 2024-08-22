@@ -136,6 +136,8 @@ func depotBuild(ctx context.Context, streams *iostreams.IOStreams, opts ImageOpt
 		streams.StopProgressIndicator()
 		return nil, buildErr
 	}
+	buildState.BuilderMeta.DepotBuildId = build.ID
+
 	defer func() {
 		buildkit.Release()
 		build.Finish(buildErr)
