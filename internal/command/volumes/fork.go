@@ -91,7 +91,7 @@ func runFork(ctx context.Context) error {
 	} else {
 		vol, err = flapsClient.GetVolume(ctx, volID)
 		if err != nil {
-			return fmt.Errorf("failed to get volume: %w", err)
+			return err
 		}
 	}
 
