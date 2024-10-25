@@ -18,7 +18,7 @@ type natsLogStream struct {
 }
 
 func NewNatsStream(ctx context.Context, apiClient flyutil.Client, opts *LogOptions) (LogStream, error) {
-	app, err := flyutil.FetchAppBasic(ctx, opts.AppName)
+	app, err := flyutil.FetchApp(ctx, apiClient, opts.AppName)
 	if err != nil {
 		return nil, fmt.Errorf("failed fetching target app: %w", err)
 	}
@@ -118,7 +118,6 @@ func fromNats(ctx context.Context, out chan<- LogEntry, nc *nats.Conn, opts *Log
 			break
 		}
 
-		println("got nats log")
 		out <- LogEntry{
 			Instance:  log.Fly.App.Instance,
 			Level:     log.Log.Level,

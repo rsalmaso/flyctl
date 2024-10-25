@@ -4,7 +4,6 @@ package cache
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -63,23 +62,22 @@ type Cache interface {
 	// os.WriteFile.
 	Save(path string) error
 
-	GetAppBasic(appName string) *fly.AppBasic
-	SetAppBasic(appName string, app *fly.AppBasic)
+	GetAppCompact(appName string) *fly.AppCompact
+	SetAppCompact(appName string, app *fly.AppCompact)
 
 	GetOrganizations() []*fly.OrganizationBasic
 	SetOrganizations(orgs []*fly.OrganizationBasic)
+
+	GetCertificate(cacheKey string) *fly.IssuedCertificate
+	SetCertificate(cacheKey string, cert *fly.IssuedCertificate, duration time.Duration)
 }
 
 const defaultChannel = "latest"
 
 // New initializes and returns a reference to a new cache.
 func New() Cache {
-	apps := map[string]*fly.AppBasic{}
-	apps["wjordan-vicky"] = &fly.AppBasic{}
-	fmt.Printf("Setting cache apps: %v\n", apps)
 	return &cache{
 		channel: defaultChannel,
-		apps:    apps,
 	}
 }
 
@@ -90,15 +88,42 @@ type cache struct {
 	lastCheckedAt time.Time
 	latestRelease *update.Release
 	invalidVer    *invalidVer
-	apps          map[string]*fly.AppBasic
+	apps          map[string]*fly.AppCompact
 	orgs          []*fly.OrganizationBasic
+	certs         map[string]*Certificate
 }
 
-func (c *cache) SetAppBasic(appName string, app *fly.AppBasic) {
+func (c *cache) GetCertificate(cacheKey string) *fly.IssuedCertificate {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	cert := c.certs[cacheKey]
+	if cert == nil {
+		return nil
+	} else if !cert.isValid() {
+		delete(c.certs, cacheKey)
+		return nil
+	}
+	return cert.IssuedCertificate
+}
+
+func (c *cache) SetCertificate(cacheKey string, cert *fly.IssuedCertificate, duration time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.certs == nil {
+		c.certs = map[string]*Certificate{}
+	}
+	c.certs[cacheKey] = &Certificate{
+		IssuedCertificate: cert,
+		Until:             time.Now().Add(duration),
+	}
+	c.dirty = true
+}
+
+func (c *cache) SetAppCompact(appName string, app *fly.AppCompact) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.apps == nil {
-		c.apps = map[string]*fly.AppBasic{}
+		c.apps = map[string]*fly.AppCompact{}
 	}
 	c.apps[appName] = app
 	c.dirty = true
@@ -108,9 +133,10 @@ func (c *cache) SetOrganizations(orgs []*fly.OrganizationBasic) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.orgs = orgs
+	c.dirty = true
 }
 
-func (c *cache) GetAppBasic(appName string) *fly.AppBasic {
+func (c *cache) GetAppCompact(appName string) *fly.AppCompact {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.apps[appName]
@@ -212,8 +238,18 @@ type wrapper struct {
 	LastCheckedAt time.Time       `yaml:"last_checked_at,omitempty"`
 	LatestRelease *update.Release `yaml:"latest_release,omitempty"`
 	InvalidVer    *invalidVer
-	Apps          map[string]*fly.AppBasic `yaml:"apps,omitempty"`
-	Orgs          []*fly.OrganizationBasic `yaml:"orgs,omitempty"`
+	Apps          map[string]*fly.AppCompact `yaml:"apps,omitempty"`
+	Orgs          []*fly.OrganizationBasic   `yaml:"orgs,omitempty"`
+	Certs         map[string]*Certificate    `yaml:"certs,omitempty"`
+}
+
+type Certificate struct {
+	*fly.IssuedCertificate
+	Until time.Time
+}
+
+func (cert *Certificate) isValid() bool {
+	return cert.Until.After(time.Now())
 }
 
 func lockPath() string {
@@ -235,6 +271,7 @@ func (c *cache) Save(path string) (err error) {
 		InvalidVer:    c.invalidVer,
 		Apps:          c.apps,
 		Orgs:          c.orgs,
+		Certs:         c.certs,
 	}
 	if c.invalidVer != nil && c.IsCurrentVersionInvalid() == "" {
 		w.InvalidVer = nil
@@ -291,6 +328,7 @@ func Load(path string) (c Cache, err error) {
 			invalidVer:    w.InvalidVer,
 			apps:          w.Apps,
 			orgs:          w.Orgs,
+			certs:         w.Certs,
 		}
 	}
 

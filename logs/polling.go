@@ -87,13 +87,17 @@ func Poll(ctx context.Context, out chan<- LogEntry, client flyutil.Client, opts 
 		}
 
 		for _, entry := range entries {
-			out <- LogEntry{
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case out <- LogEntry{
 				Instance:  entry.Instance,
 				Level:     entry.Level,
 				Message:   entry.Message,
 				Region:    entry.Region,
 				Timestamp: entry.Timestamp,
 				Meta:      entry.Meta,
+			}:
 			}
 		}
 

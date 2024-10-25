@@ -4,10 +4,9 @@ package logs
 import (
 	"context"
 	"errors"
-	"io"
-
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
+	"io"
 
 	"github.com/superfly/flyctl/iostreams"
 	"github.com/superfly/flyctl/logs"
@@ -36,7 +35,7 @@ Use --no-tail to only fetch the logs in the buffer.
 	)
 
 	cmd = command.New("logs", short, long, run,
-		//command.RequireSession,
+		command.RequireSession,
 		command.RequireAppName,
 	)
 
@@ -137,7 +136,11 @@ func nats(ctx context.Context, eg *errgroup.Group, client flyutil.Client, opts *
 				cancelPolling()
 				cancelPolling = nil
 			}
-			c <- entry
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case c <- entry:
+			}
 		}
 
 		return nil

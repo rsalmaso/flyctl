@@ -324,7 +324,7 @@ func doFetchOrgTokens(ctx context.Context, t *tokens.Tokens, fetchOrgs orgFetche
 type orgFetcher func(context.Context, flyutil.Client) (map[uint64]string, error)
 
 func defaultOrgFetcher(ctx context.Context, c flyutil.Client) (map[uint64]string, error) {
-	orgs, err := c.GetOrganizations(ctx)
+	orgs, err := flyutil.FetchOrganizations(ctx, c)
 	if err != nil {
 		return nil, err
 	}

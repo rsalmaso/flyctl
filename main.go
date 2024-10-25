@@ -34,6 +34,16 @@ func run() (exitCode int) {
 
 	go handleDebugSignal(ctx)
 
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGPIPE)
+
+		select {
+		case <-sigCh:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
 	if !buildinfo.IsDev() {
 		defer func() {
 			if r := recover(); r != nil {

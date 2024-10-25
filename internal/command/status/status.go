@@ -88,7 +88,7 @@ func once(ctx context.Context, out io.Writer) (err error) {
 		client  = flyutil.ClientFromContext(ctx)
 	)
 
-	app, err := client.GetAppCompact(ctx, appName)
+	app, err := flyutil.FetchApp(ctx, client, appName)
 	if err != nil {
 		return fmt.Errorf("failed to get app: %w", err)
 	}

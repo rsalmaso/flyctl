@@ -115,11 +115,12 @@ func newRunE(fn Runner, preparers ...preparers.Preparer) func(*cobra.Command, []
 			return
 		}
 
+		tm := task.FromContext(ctx)
 		// start task manager using the prepared context
-		task.FromContext(ctx).Start(ctx)
+		tm.Start(ctx)
 
 		sendOsMetric(ctx, "started")
-		task.FromContext(ctx).RunFinalizer(func(ctx context.Context) {
+		tm.RunFinalizer(func(ctx context.Context) {
 			io := iostreams.FromContext(ctx)
 
 			if !metrics.IsFlushMetricsDisabled(ctx) {
@@ -129,6 +130,9 @@ func newRunE(fn Runner, preparers ...preparers.Preparer) func(*cobra.Command, []
 				}
 			}
 		})
+		tm.RunFinalizer(func(ctx context.Context) {
+			finalize(ctx)
+		})
 
 		defer func() {
 			if err == nil {
@@ -136,11 +140,7 @@ func newRunE(fn Runner, preparers ...preparers.Preparer) func(*cobra.Command, []
 			}
 		}()
 
-		// run the command
-		if err = fn(ctx); err == nil {
-			// and finally, run the finalizer
-			finalize(ctx)
-		}
+		err = fn(ctx)
 
 		return
 	}

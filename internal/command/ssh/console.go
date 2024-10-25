@@ -103,10 +103,7 @@ func newConsole() *cobra.Command {
 		usage = "console"
 	)
 
-	cmd := command.New(usage, short, long, runConsole,
-		//command.RequireSession,
-		command.RequireAppName,
-	)
+	cmd := command.New(usage, short, long, runConsole, command.RequireSession, command.RequireAppName)
 
 	cmd.Args = cobra.MaximumNArgs(1)
 
@@ -143,15 +140,16 @@ func runConsole(ctx context.Context) error {
 		terminal.Debugf("Retrieving app info for %s\n", appName)
 	}
 
-	app, err := client.GetAppCompact(ctx, appName)
+	app, err := flyutil.FetchApp(ctx, client, appName)
 	if err != nil {
 		return fmt.Errorf("get app: %w", err)
 	}
 
-	network, err := client.GetAppNetwork(ctx, app.Name)
-	if err != nil {
-		return fmt.Errorf("get app network: %w", err)
-	}
+	network := fly.StringPointer("")
+	//network, err := client.GetAppNetwork(ctx, app.Name)
+	//if err != nil {
+	//	return fmt.Errorf("get app network: %w", err)
+	//}
 
 	agentclient, dialer, err := BringUpAgent(ctx, client, app, *network, quiet(ctx))
 	if err != nil {
