@@ -4,11 +4,13 @@ package cache
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
+	"github.com/superfly/fly-go"
 	"gopkg.in/yaml.v3"
 
 	"github.com/superfly/flyctl/flyctl"
@@ -60,14 +62,24 @@ type Cache interface {
 	// Save writes the YAML-encoded representation of c to the named file path via
 	// os.WriteFile.
 	Save(path string) error
+
+	GetAppBasic(appName string) *fly.AppBasic
+	SetAppBasic(appName string, app *fly.AppBasic)
+
+	GetOrganizations() []*fly.OrganizationBasic
+	SetOrganizations(orgs []*fly.OrganizationBasic)
 }
 
 const defaultChannel = "latest"
 
 // New initializes and returns a reference to a new cache.
 func New() Cache {
+	apps := map[string]*fly.AppBasic{}
+	apps["wjordan-vicky"] = &fly.AppBasic{}
+	fmt.Printf("Setting cache apps: %v\n", apps)
 	return &cache{
 		channel: defaultChannel,
+		apps:    apps,
 	}
 }
 
@@ -78,6 +90,36 @@ type cache struct {
 	lastCheckedAt time.Time
 	latestRelease *update.Release
 	invalidVer    *invalidVer
+	apps          map[string]*fly.AppBasic
+	orgs          []*fly.OrganizationBasic
+}
+
+func (c *cache) SetAppBasic(appName string, app *fly.AppBasic) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.apps == nil {
+		c.apps = map[string]*fly.AppBasic{}
+	}
+	c.apps[appName] = app
+	c.dirty = true
+}
+
+func (c *cache) SetOrganizations(orgs []*fly.OrganizationBasic) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.orgs = orgs
+}
+
+func (c *cache) GetAppBasic(appName string) *fly.AppBasic {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.apps[appName]
+}
+
+func (c *cache) GetOrganizations() []*fly.OrganizationBasic {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.orgs
 }
 
 func (c *cache) Channel() string {
@@ -170,6 +212,8 @@ type wrapper struct {
 	LastCheckedAt time.Time       `yaml:"last_checked_at,omitempty"`
 	LatestRelease *update.Release `yaml:"latest_release,omitempty"`
 	InvalidVer    *invalidVer
+	Apps          map[string]*fly.AppBasic `yaml:"apps,omitempty"`
+	Orgs          []*fly.OrganizationBasic `yaml:"orgs,omitempty"`
 }
 
 func lockPath() string {
@@ -189,6 +233,8 @@ func (c *cache) Save(path string) (err error) {
 		LastCheckedAt: c.lastCheckedAt,
 		LatestRelease: c.latestRelease,
 		InvalidVer:    c.invalidVer,
+		Apps:          c.apps,
+		Orgs:          c.orgs,
 	}
 	if c.invalidVer != nil && c.IsCurrentVersionInvalid() == "" {
 		w.InvalidVer = nil
@@ -243,6 +289,8 @@ func Load(path string) (c Cache, err error) {
 			lastCheckedAt: w.LastCheckedAt,
 			latestRelease: w.LatestRelease,
 			invalidVer:    w.InvalidVer,
+			apps:          w.Apps,
+			orgs:          w.Orgs,
 		}
 	}
 

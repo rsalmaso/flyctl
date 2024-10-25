@@ -51,6 +51,10 @@ func Poll(ctx context.Context, out chan<- LogEntry, client flyutil.Client, opts 
 	for {
 		if waitFor > minWait {
 			pause.For(ctx, waitFor)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 		}
 
 		entries, token, err := client.GetAppLogs(ctx, opts.AppName, nextToken, opts.RegionCode, opts.VMID)

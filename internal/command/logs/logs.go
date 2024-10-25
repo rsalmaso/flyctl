@@ -5,9 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
-	"time"
 
-	"github.com/azazeal/pause"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
@@ -38,7 +36,7 @@ Use --no-tail to only fetch the logs in the buffer.
 	)
 
 	cmd = command.New("logs", short, long, run,
-		command.RequireSession,
+		//command.RequireSession,
 		command.RequireAppName,
 	)
 
@@ -84,8 +82,10 @@ func run(ctx context.Context) error {
 		}
 	} else {
 		pollingCtx, cancelPolling := context.WithCancel(ctx)
+		pollOpts := *opts
+		pollOpts.NoTail = true
 		streams = []<-chan logs.LogEntry{
-			poll(pollingCtx, eg, client, opts),
+			poll(pollingCtx, eg, client, &pollOpts),
 			nats(ctx, eg, client, opts, cancelPolling),
 		}
 	}
@@ -131,12 +131,12 @@ func nats(ctx context.Context, eg *errgroup.Group, client flyutil.Client, opts *
 			return nil
 		}
 
-		// we wait for 2 seconds before canceling the polling context so that
-		// we get a few records
-		pause.For(ctx, 2*time.Second)
-		cancelPolling()
-
+		// wait to cancel the polling context until we print a single record
 		for entry := range stream.Stream(ctx, opts) {
+			if cancelPolling != nil {
+				cancelPolling()
+				cancelPolling = nil
+			}
 			c <- entry
 		}
 

@@ -227,11 +227,11 @@ func (s *server) checkForConfigChange() (err error) {
 	return
 }
 
-func (s *server) buildTunnel(ctx context.Context, org *fly.Organization, reestablish bool, network string, client flyutil.Client) (tunnel *wg.Tunnel, err error) {
+func (s *server) buildTunnel(ctx context.Context, orgSlug string, reestablish bool, network string, client flyutil.Client) (tunnel *wg.Tunnel, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	tk := tunnelKey{orgSlug: org.Slug, networkName: network}
+	tk := tunnelKey{orgSlug: orgSlug, networkName: network}
 
 	// not checking the region is intentional, it's static during the lifetime of the agent
 	if tunnel = s.tunnels[tk]; tunnel != nil && !reestablish {
@@ -240,7 +240,7 @@ func (s *server) buildTunnel(ctx context.Context, org *fly.Organization, reestab
 	}
 
 	var state *wg.WireGuardState
-	if state, err = wireguard.StateForOrg(ctx, client, org, os.Getenv("FLY_AGENT_WG_REGION"), "", reestablish, network); err != nil {
+	if state, err = wireguard.StateForOrg(ctx, client, orgSlug, os.Getenv("FLY_AGENT_WG_REGION"), "", reestablish, network); err != nil {
 		return
 	}
 

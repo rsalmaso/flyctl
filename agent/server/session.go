@@ -170,14 +170,7 @@ func (s *session) doEstablish(ctx context.Context, recycle bool, args ...string)
 	}
 	s.logger.Printf("establishing tunnel for %s, %s", args[0], args[1])
 
-	org, err := s.fetchOrg(ctx, args[0])
-	if err != nil {
-		s.error(err)
-
-		return
-	}
-
-	tunnel, err := s.srv.buildTunnel(ctx, org, recycle, args[1], s.getClient(ctx))
+	tunnel, err := s.srv.buildTunnel(ctx, args[0], recycle, args[1], s.getClient(ctx))
 	if err != nil {
 		s.error(err)
 

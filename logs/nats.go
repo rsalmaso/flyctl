@@ -7,7 +7,6 @@ import (
 	"net"
 
 	"github.com/nats-io/nats.go"
-
 	"github.com/superfly/flyctl/agent"
 	"github.com/superfly/flyctl/internal/config"
 	"github.com/superfly/flyctl/internal/flyutil"
@@ -19,7 +18,7 @@ type natsLogStream struct {
 }
 
 func NewNatsStream(ctx context.Context, apiClient flyutil.Client, opts *LogOptions) (LogStream, error) {
-	app, err := apiClient.GetAppBasic(ctx, opts.AppName)
+	app, err := flyutil.FetchAppBasic(ctx, opts.AppName)
 	if err != nil {
 		return nil, fmt.Errorf("failed fetching target app: %w", err)
 	}
@@ -76,6 +75,7 @@ func newNatsClient(ctx context.Context, dialer agent.Dialer, orgSlug string) (*n
 
 	url := fmt.Sprintf("nats://[%s]:4223", natsIP.String())
 	toks := config.Tokens(ctx)
+	fmt.Printf("Connecting to NATS: %v\n", url)
 	conn, err := nats.Connect(
 		url,
 		nats.SetCustomDialer(&natsDialer{dialer, ctx}),
@@ -84,6 +84,7 @@ func newNatsClient(ctx context.Context, dialer agent.Dialer, orgSlug string) (*n
 	if err != nil {
 		return nil, fmt.Errorf("failed connecting to nats: %w", err)
 	}
+	println("Connected to NATS")
 
 	return conn, nil
 }
@@ -117,6 +118,7 @@ func fromNats(ctx context.Context, out chan<- LogEntry, nc *nats.Conn, opts *Log
 			break
 		}
 
+		println("got nats log")
 		out <- LogEntry{
 			Instance:  log.Fly.App.Instance,
 			Level:     log.Log.Level,
