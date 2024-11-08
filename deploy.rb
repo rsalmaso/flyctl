@@ -144,6 +144,13 @@ if !DEPLOY_ONLY
 
     cmd += " --copy-config" if DEPLOY_COPY_CONFIG
 
+    raw_plan = exec_capture("nixpacks plan .", log: false, ignore_failure: true)
+    begin
+      artifact Artifact::NIXPACKS_PLAN, JSON.parse(raw_plan)
+    rescue StandardError => e
+      debug "could not parse nixpacks plan: #{e}"
+    end
+
     exec_capture(cmd).chomp
 
     raw_manifest = File.read(MANIFEST_PATH)
@@ -156,13 +163,6 @@ if !DEPLOY_ONLY
     end
 
     artifact Artifact::MANIFEST, manifest
-
-    raw_plan = exec_capture("nixpacks plan .", log: false, ignore_failure: true)
-    begin
-      artifact Artifact::NIXPACKS_PLAN, JSON.parse(raw_plan)
-    rescue StandardError => e
-      debug "could not parse nixpacks plan: #{e}"
-    end
 
     manifest
   end
