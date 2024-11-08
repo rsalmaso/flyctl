@@ -65,6 +65,10 @@ RUN git clone https://github.com/asdf-vm/asdf.git $HOME/.asdf --branch v0.14.0 &
 
 ENV MIX_ENV=dev
 
+RUN curl -L https://github.com/railwayapp/nixpacks/releases/download/v1.29.0/nixpacks-v1.29.0-x86_64-unknown-linux-musl.tar.gz -o nixpacks.tar.gz && \
+    tar -xzf nixpacks.tar.gz && \
+    mv nixpacks /usr/local/bin/nixpacks
+
 COPY bin/flyctl /usr/local/bin/flyctl
 COPY deploy.rb /deploy.rb
 COPY deploy /deploy

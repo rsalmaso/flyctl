@@ -45,6 +45,8 @@ module Artifact
   TIGRIS_OBJECT_STORAGE = :tigris_object_storage
   SENTRY = :sentry
   DOCKER_IMAGE = :docker_image
+
+  NIXPACKS_PLAN = :nixpacks_plan
 end
 
 $counter = 0
@@ -93,7 +95,7 @@ def error(msg)
     log("error", msg)
 end
 
-def exec_capture(cmd, display: nil, log: true)
+def exec_capture(cmd, display: nil, log: true, ignore_failure: false)
   cmd_display = display || cmd
   event :exec, { cmd: cmd_display }
 
@@ -124,7 +126,7 @@ def exec_capture(cmd, display: nil, log: true)
       wait_thr.value
   end
 
-  if !status.success?
+  if !status.success? && !ignore_failure
       event :error, { type: :exec, message: "unsuccessful command '#{cmd_display}'", exit_code: status.exitstatus, pid: status.pid }
       exit 1
   end

@@ -157,6 +157,13 @@ if !DEPLOY_ONLY
 
     artifact Artifact::MANIFEST, manifest
 
+    raw_plan = exec_capture("nixpacks plan .", log: false, ignore_failure: true)
+    begin
+      artifact Artifact::NIXPACKS_PLAN, JSON.parse(raw_plan)
+    rescue StandardError => e
+      debug "could not parse nixpacks plan: #{e}"
+    end
+
     manifest
   end
 
